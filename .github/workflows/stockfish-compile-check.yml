@@ -21,6 +21,9 @@ jobs:
           git clone --branch sf_11 --depth 1 \
             https://github.com/official-stockfish/Stockfish.git stockfish-src
 
+      - name: Show original Stockfish main.cpp for reference
+        run: cat stockfish-src/src/main.cpp
+
       - name: Patch known old-Stockfish-vs-new-compiler issues
         # Stockfish 11 (2020) wrote its own clamp() before C++17 added
         # std::clamp() to the language. Since some header pulls in
