@@ -30,12 +30,27 @@ jobs:
         # just throw the compiler directly at every .cpp file and see
         # what yells.
         run: |
+          # The container has devkitARM installed, but its "bin" folder
+          # (where the actual compiler executable lives) isn't
+          # necessarily on PATH for this kind of non-interactive shell.
+          # DEVKITARM is an environment variable baked into the image
+          # that points at where it's installed -- so we build the full
+          # path to the compiler from that instead of guessing.
+          echo "DEVKITARM is set to: $DEVKITARM"
+          CXX="$DEVKITARM/bin/arm-none-eabi-g++"
+
+          if [ ! -x "$CXX" ]; then
+            echo "Compiler not found at $CXX -- listing what IS in that bin folder:"
+            ls -la "$DEVKITARM/bin/" || echo "That folder doesn't even exist."
+            exit 1
+          fi
+
           mkdir -p build-check
           cd stockfish-src/src
           FAILED=0
           for f in *.cpp; do
             echo "--- Compiling $f ---"
-            arm-none-eabi-g++ -c "$f" \
+            "$CXX" -c "$f" \
               -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft \
               -std=gnu++17 -O1 \
               -o "../../build-check/${f%.cpp}.o" \
