@@ -21,8 +21,12 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source
-INCLUDES	:=	include
+# "source" = our own code. "stockfish-src/src" = Stockfish's code, cloned
+# in by the GitHub Actions workflow before this Makefile ever runs (see
+# build.yml) -- it won't exist if you try to build this locally without
+# that step.
+SOURCES		:=	source stockfish-src/src
+INCLUDES	:=	include stockfish-src/src
 
 #---------------------------------------------------------------------------------
 # options for code generation -- this is the "which CPU dialect" section,
@@ -36,7 +40,7 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 
 CFLAGS	+=	$(INCLUDE) -D__3DS__
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17 -Wno-psabi
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
