@@ -1,0 +1,30 @@
+name: Build 3DS Homebrew
+
+# Runs on every push to main, and can also be triggered manually from
+# the "Actions" tab on GitHub (workflow_dispatch).
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # This is the whole trick: GitHub spins up devkitPro's official
+    # Docker image, which already has devkitARM + libctru installed.
+    # Your Chromebook never installs any of this itself.
+    container: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: make
+
+      - name: Upload built .3dsx
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-3dsx
+          path: '*.3dsx'
