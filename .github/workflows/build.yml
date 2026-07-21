@@ -1,30 +1,54 @@
-name: Build 3DS Homebrew
+name: Stockfish Compile Check
 
-# Runs on every push to main, and can also be triggered manually from
-# the "Actions" tab on GitHub (workflow_dispatch).
+# This is a SEPARATE, throwaway check -- it does not build your actual
+# 3DS app. Its only job is: "does Stockfish 11's source even compile
+# under the same ARM compiler the 3DS uses, and if not, what breaks?"
+#
+# Run it manually from the Actions tab whenever you want to test this,
+# rather than on every push (it's slow-ish and not part of your normal
+# hello-world iteration loop).
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
-
-    # This is the whole trick: GitHub spins up devkitPro's official
-    # Docker image, which already has devkitARM + libctru installed.
-    # Your Chromebook never installs any of this itself.
     container: devkitpro/devkitarm:latest
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
+      - name: Clone Stockfish 11 source
+        run: |
+          git clone --branch sf_11 --depth 1 \
+            https://github.com/official-stockfish/Stockfish.git stockfish-src
 
-      - name: Build
-        run: make
+      - name: Attempt compile (object files only, no linking)
+        # -c            = compile each file to a .o, don't try to link a final binary
+        #                 (linking needs main() and 3DS-specific setup we haven't done yet)
+        # -march/-mtune = same ARM11 target as the real 3DS build
+        # We deliberately do NOT use Stockfish's own Makefile yet -- its
+        # Makefile assumes a desktop OS and will fight us. Instead we
+        # just throw the compiler directly at every .cpp file and see
+        # what yells.
+        run: |
+          mkdir -p build-check
+          cd stockfish-src/src
+          FAILED=0
+          for f in *.cpp; do
+            echo "--- Compiling $f ---"
+            arm-none-eabi-g++ -c "$f" \
+              -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft \
+              -std=gnu++17 -O1 \
+              -o "../../build-check/${f%.cpp}.o" \
+              || FAILED=1
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "One or more files failed to compile -- see log above for the first errors."
+            exit 1
+          fi
 
-      - name: Upload built .3dsx
+      - name: Upload any partial build logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: homebrew-3dsx
-          path: '*.3dsx'
+          name: stockfish-compile-objects
+          path: build-check/
