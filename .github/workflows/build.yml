@@ -20,6 +20,23 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Fetch Stockfish 11 source
+        run: |
+          git clone --branch sf_11 --depth 1 \
+            https://github.com/official-stockfish/Stockfish.git stockfish-src
+
+          # Stockfish's own main.cpp has its own main() function, and we
+          # already have one in source/main.cpp. Two main()s can't link
+          # together, and we don't want theirs anyway (it reads from a
+          # real keyboard, which the 3DS doesn't have). Delete it.
+          rm stockfish-src/src/main.cpp
+
+          # Same fix as before: Stockfish 11 predates std::clamp, so its
+          # own hand-written clamp() collides with the compiler's C++17
+          # one. Tell this one call to use Stockfish's own version.
+          sed -i 's/clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/::clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/' \
+            stockfish-src/src/material.cpp
+
       - name: Build
         run: make
 
