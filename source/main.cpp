@@ -1,72 +1,92 @@
 // main.cpp
 //
-// This is the whole program. Think of everything below as one long "main
-// subroutine" that never RTS's until the user quits.
+// This version boots the real Stockfish 11 engine and asks it to find a
+// move, instead of just printing hello-world text.
 //
-// #include is like your NES project pulling in a table of subroutine
-// addresses/constants that someone else already wrote (3ds.h = libctru's
-// "here's how to talk to the hardware" header).
+// The approach: Stockfish's own main.cpp (the one we're NOT using --
+// see the Makefile, its main.cpp is deleted from the build) does a
+// fixed startup sequence, then calls UCI::loop() which reads commands
+// forever from the keyboard until it sees "quit". We copy that exact
+// same startup sequence by hand here, then instead of a keyboard we
+// hand it a hardcoded string containing the commands we'd have typed
+// ourselves. Stockfish can't tell the difference -- as far as it knows,
+// someone is typing at it in real time.
 #include <3ds.h>
 #include <cstdio>
+#include <iostream>
+#include <sstream>
 
-// In C/C++, `int main(...)` is just the label the OS jumps to first ---
-// like a reset vector pointing at your init code. `int argc, char** argv`
-// are command-line args; we don't use them, they're just part of the
-// required "function signature" (think: a fixed calling convention, like
-// "A register = arg1" for a specific subroutine).
+// Stockfish's own headers -- same ones its real main.cpp includes.
+#include "bitboard.h"
+#include "position.h"
+#include "search.h"
+#include "thread.h"
+#include "tt.h"
+#include "uci.h"
+#include "endgame.h"
+#include "syzygy/tbprobe.h"
+
+namespace PSQT {
+  void init();
+}
+
 int main(int argc, char** argv)
 {
-    // ---- SETUP (like your power-on init: clear RAM, set up PPU) ----
-
-    // gfxInitDefault() = "turn on both LCD screens and set up their
-    // framebuffers". Nothing will show up until you call this, same as
-    // an NES needing PPUCTRL/PPUMASK set before anything renders.
+    // ---- 3DS screen setup, same as hello world ----
     gfxInitDefault();
-
-    // consoleInit() turns one screen into a simple text terminal, so we
-    // can printf() text to it instead of drawing pixels/sprites by hand.
-    // GFX_TOP = top screen. GFX_BOTTOM would be the touch screen.
-    // (Second argument NULL = "manage the console buffer yourself,
-    // don't make me pass in a custom one".)
     consoleInit(GFX_TOP, NULL);
 
-    // printf is a subroutine (from cstdio) that, because of consoleInit,
-    // has been "rewired" to write to the 3DS screen instead of nowhere.
-    printf("Hello from a real 3DS build!\n");
-    printf("This proves the toolchain + CI pipeline works.\n");
+    printf("Booting Stockfish on real 3DS hardware...\n\n");
+
+    // ---- Stockfish's own startup sequence, copied exactly from its
+    //      real main.cpp, just triggered by us instead of its main() ----
+    std::cout << engine_info() << std::endl;
+    UCI::init(Options);
+    PSQT::init();
+    Bitboards::init();
+    Position::init();
+    Bitbases::init();
+    Endgames::init();
+    Threads.set(Options["Threads"]);
+    Search::clear(); // must happen after threads are up, same order as original
+
+    // ---- Feed it a hardcoded "conversation" instead of a keyboard ----
+    // A real UCI-speaking chess GUI would type these same lines by hand,
+    // one at a time, waiting for replies in between. We don't have a
+    // keyboard wired up yet, so we pre-load all of them into a fake
+    // input stream and point cin at it instead.
+    std::istringstream fakeInput(
+        "setoption name Hash value 1\n"     // cap transposition table to 1MB (3DS has no gigabytes to spare)
+        "setoption name Threads value 1\n"  // force single-threaded search
+        "position startpos\n"               // set up the normal chess starting position
+        "go depth 10\n"                     // search 10 ply deep, then report its answer
+        "quit\n"                            // tell it to stop and return control to us
+    );
+    std::cin.rdbuf(fakeInput.rdbuf());
+
+    // This call blocks until it processes "quit" above. It's the exact
+    // same function real Stockfish calls from its own main() -- we're
+    // just handing it our fake conversation instead of a real terminal.
+    UCI::loop(0, nullptr);
+
+    Threads.set(0);
+
+    printf("\nDone -- see Stockfish's output above.\n");
     printf("Press START to exit.\n");
 
-    // ---- MAIN LOOP (like your NES loop: wait for vblank, poll pads, repeat) ----
-
-    // aptMainLoop() returns true every frame until the OS tells the app
-    // to close (e.g. user pressed the HOME button and closed it).
-    // It's your `forever: ... jmp forever` label, but with a built-in
-    // "unless the OS says stop" check.
+    // ---- keep the screen up so you can actually read the output ----
     while (aptMainLoop())
     {
-        // hidScanInput() = poll the controller/touchscreen this frame,
-        // like reading $4016/$4017 on NES.
         hidScanInput();
-
-        // hidKeysDown() returns a bitmask (a "status byte", but 32 bits)
-        // of which buttons were newly pressed THIS frame.
         u32 kDown = hidKeysDown();
-
-        // KEY_START is just a #define'd bit-mask constant. This is the
-        // same idea as `AND #%00010000` / `BNE` to test one bit of a
-        // status register.
         if (kDown & KEY_START)
-            break; // "RTS out of the main loop"
+            break;
 
-        // These three lines are the 3DS equivalent of "wait for vblank,
-        // then flip the double-buffered framebuffer":
-        gfxFlushBuffers();   // make sure all drawing commands are done
-        gfxSwapBuffers();    // swap front/back buffer (what's shown vs what's drawn to)
-        gspWaitForVBlank();  // block until the screen's vertical blank, avoids tearing
+        gfxFlushBuffers();
+        gfxSwapBuffers();
+        gspWaitForVBlank();
     }
 
-    // ---- TEARDOWN ----
-    gfxExit(); // opposite of gfxInitDefault() -- release the screens cleanly
-
-    return 0; // like RTS with a "success" code left in the accumulator
+    gfxExit();
+    return 0;
 }
