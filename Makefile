@@ -1,0 +1,102 @@
+#---------------------------------------------------------------------------------
+# This Makefile is mostly boilerplate you won't need to touch. Think of it
+# like a NES linker config / iNES header setup: it's declaring "here's my
+# source files, here's the target chip (ARM11), here's what libraries to
+# link against" rather than doing any logic itself.
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+
+ifeq ($(strip $(DEVKITARM)),)
+$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+endif
+
+TOPDIR ?= $(CURDIR)
+include $(DEVKITARM)/3ds_rules
+
+#---------------------------------------------------------------------------------
+# TARGET   = name of the output file (TARGET.3dsx)
+# BUILD    = folder for intermediate object files (like .o files from an assembler)
+# SOURCES  = folders to look for .c/.cpp/.s files in
+# INCLUDES = folders to look for header files in
+#---------------------------------------------------------------------------------
+TARGET		:=	$(notdir $(CURDIR))
+BUILD		:=	build
+SOURCES		:=	source
+INCLUDES	:=	include
+
+#---------------------------------------------------------------------------------
+# options for code generation -- this is the "which CPU dialect" section,
+# equivalent to telling an assembler "target 6502, not 65816"
+#---------------------------------------------------------------------------------
+ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+
+CFLAGS	:=	-g -Wall -O2 -mword-relocations \
+			-fomit-frame-pointer -ffunction-sections \
+			$(ARCH)
+
+CFLAGS	+=	$(INCLUDE) -D__3DS__
+
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+
+ASFLAGS	:=	-g $(ARCH)
+LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+
+# -lctru = link against libctru (the "here's how to talk to 3DS hardware" library)
+# -lm    = link against the standard math library
+LIBS	:=	-lctru -lm
+
+#---------------------------------------------------------------------------------
+# CTRULIB points at libctru's install location; devkitPro's Makefiles set
+# this env var for you automatically, you don't need to set it yourself.
+#---------------------------------------------------------------------------------
+LIBDIRS	:= $(CTRULIB)
+
+#---------------------------------------------------------------------------------
+# You shouldn't need to edit anything below this line.
+#---------------------------------------------------------------------------------
+ifneq ($(BUILD),$(notdir $(CURDIR)))
+
+export OUTPUT	:=	$(CURDIR)/$(TARGET)
+export TOPDIR	:=	$(CURDIR)
+
+export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
+
+export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+
+CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+
+export LD	:=	$(if $(strip $(CPPFILES)),$(CXX),$(CC))
+
+export OFILES	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+
+export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(CURDIR)/$(BUILD)
+
+export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+
+.PHONY: $(BUILD) clean all
+
+all: $(BUILD)
+
+$(BUILD):
+	@[ -d $@ ] || mkdir -p $@
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+clean:
+	@echo clean ...
+	@rm -fr $(BUILD) $(TARGET).3dsx $(TARGET).smdh $(TARGET).elf
+
+else
+
+DEPENDS	:=	$(OFILES:.o=.d)
+
+$(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
+
+$(OUTPUT).elf	:	$(OFILES)
+
+-include $(DEPENDS)
+
+endif
