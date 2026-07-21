@@ -25,8 +25,8 @@ BUILD		:=	build
 # in by the GitHub Actions workflow before this Makefile ever runs (see
 # build.yml) -- it won't exist if you try to build this locally without
 # that step.
-SOURCES		:=	source stockfish-src/src
-INCLUDES	:=	include stockfish-src/src
+SOURCES		:=	source stockfish-src/src stockfish-src/src/syzygy
+INCLUDES	:=	include stockfish-src/src stockfish-src/src/syzygy
 
 #---------------------------------------------------------------------------------
 # options for code generation -- this is the "which CPU dialect" section,
