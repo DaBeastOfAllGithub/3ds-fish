@@ -37,6 +37,9 @@ jobs:
           sed -i 's/clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/::clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/' \
             stockfish-src/src/material.cpp
 
+      - name: Show tbprobe.h for reference
+        run: cat stockfish-src/src/syzygy/tbprobe.h
+
       - name: Build
         run: make
 
