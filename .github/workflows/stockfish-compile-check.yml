@@ -21,6 +21,17 @@ jobs:
           git clone --branch sf_11 --depth 1 \
             https://github.com/official-stockfish/Stockfish.git stockfish-src
 
+      - name: Patch known old-Stockfish-vs-new-compiler issues
+        # Stockfish 11 (2020) wrote its own clamp() before C++17 added
+        # std::clamp() to the language. Since some header pulls in
+        # "using namespace std;", the compiler now sees two clamp()
+        # candidates and refuses to guess. Fix: tell this one call to
+        # explicitly use Stockfish's own version (the "::" means
+        # "global scope, not std").
+        run: |
+          sed -i 's/clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/::clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/' \
+            stockfish-src/src/material.cpp
+
       - name: Attempt compile (object files only, no linking)
         # -c            = compile each file to a .o, don't try to link a final binary
         #                 (linking needs main() and 3DS-specific setup we haven't done yet)
@@ -52,7 +63,7 @@ jobs:
             echo "--- Compiling $f ---"
             "$CXX" -c "$f" \
               -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft \
-              -std=gnu++17 -O1 \
+              -std=gnu++17 -O1 -Wno-psabi \
               -o "../../build-check/${f%.cpp}.o" \
               || FAILED=1
           done
