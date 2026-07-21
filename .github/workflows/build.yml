@@ -31,14 +31,18 @@ jobs:
           # real keyboard, which the 3DS doesn't have). Delete it.
           rm stockfish-src/src/main.cpp
 
+          # Real tbprobe.cpp needs mmap(), which the 3DS doesn't have.
+          # We provide our own stand-in instead (source/tablebase_stub.cpp)
+          # that implements the same function names as no-ops, since we
+          # never use tablebases anyway. Delete the real file so there's
+          # no duplicate-symbol conflict with our stand-in.
+          rm stockfish-src/src/syzygy/tbprobe.cpp
+
           # Same fix as before: Stockfish 11 predates std::clamp, so its
           # own hand-written clamp() collides with the compiler's C++17
           # one. Tell this one call to use Stockfish's own version.
           sed -i 's/clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/::clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/' \
             stockfish-src/src/material.cpp
-
-      - name: Show tbprobe.h for reference
-        run: cat stockfish-src/src/syzygy/tbprobe.h
 
       - name: Build
         run: make
