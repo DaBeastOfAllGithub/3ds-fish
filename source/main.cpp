@@ -37,39 +37,58 @@ int main(int argc, char** argv)
 {
     platform_init();
 
+    // The absolute earliest checkpoint possible: if this doesn't show up
+    // on screen, the crash is happening BEFORE main() even starts
+    // running -- i.e. during automatic construction of Stockfish's
+    // global objects (its options table, thread pool, lookup tables),
+    // which C++ runs before main() is entered. That would explain a
+    // truly instant crash with nothing printed.
+    printf("[checkpoint 0] inside main(), console is alive\n");
+    platform_flush_now();
+
     printf("Booting Stockfish on real 3DS hardware...\n\n");
+    platform_flush_now();
 
     // ---- Stockfish's own startup sequence, copied exactly from its
     //      real main.cpp, just triggered by us instead of its main() ----
-    // Checkpoints (printf after each call) are here on purpose: if this
-    // crashes again, whatever's LAST printed on screen tells us exactly
-    // which call did it, instead of guessing from a crash dump alone.
+    // Checkpoints (printf after each call, forced onto screen
+    // immediately) are here on purpose: if this crashes again, whatever
+    // was last visible tells us exactly which call did it.
     std::cout << engine_info() << std::endl;
     printf("[ok] engine_info\n");
+    platform_flush_now();
 
     UCI::init(Options);
     printf("[ok] UCI::init\n");
+    platform_flush_now();
 
     PSQT::init();
     printf("[ok] PSQT::init\n");
+    platform_flush_now();
 
     Bitboards::init();
     printf("[ok] Bitboards::init\n");
+    platform_flush_now();
 
     Position::init();
     printf("[ok] Position::init\n");
+    platform_flush_now();
 
     Bitbases::init();
     printf("[ok] Bitbases::init\n");
+    platform_flush_now();
 
     Endgames::init();
     printf("[ok] Endgames::init\n");
+    platform_flush_now();
 
     Threads.set(Options["Threads"]);
     printf("[ok] Threads.set (this spawns a real thread -- watch this one)\n");
+    platform_flush_now();
 
     Search::clear(); // must happen after threads are up, same order as original
     printf("[ok] Search::clear\n");
+    platform_flush_now();
 
     // ---- Feed it a hardcoded "conversation" instead of a keyboard ----
     std::istringstream fakeInput(
