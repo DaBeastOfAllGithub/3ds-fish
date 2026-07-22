@@ -47,7 +47,7 @@ LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 # -lctru = link against libctru (the "here's how to talk to 3DS hardware" library)
 # -lm    = link against the standard math library
-LIBS	:=	-lctru -lm
+LIBS	:=	-lcitro2d -lcitro3d -lctru -lm
 
 #---------------------------------------------------------------------------------
 # CTRULIB points at libctru's install location; devkitPro's Makefiles set
