@@ -13,6 +13,13 @@ void platform_init()
     consoleInit(GFX_TOP, NULL);
 }
 
+void platform_flush_now()
+{
+    gfxFlushBuffers();
+    gfxSwapBuffers();
+    gspWaitForVBlank();
+}
+
 void platform_print_ready()
 {
     printf("\nDone -- see Stockfish's output above.\n");
