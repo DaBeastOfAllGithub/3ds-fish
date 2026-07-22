@@ -41,15 +41,35 @@ int main(int argc, char** argv)
 
     // ---- Stockfish's own startup sequence, copied exactly from its
     //      real main.cpp, just triggered by us instead of its main() ----
+    // Checkpoints (printf after each call) are here on purpose: if this
+    // crashes again, whatever's LAST printed on screen tells us exactly
+    // which call did it, instead of guessing from a crash dump alone.
     std::cout << engine_info() << std::endl;
+    printf("[ok] engine_info\n");
+
     UCI::init(Options);
+    printf("[ok] UCI::init\n");
+
     PSQT::init();
+    printf("[ok] PSQT::init\n");
+
     Bitboards::init();
+    printf("[ok] Bitboards::init\n");
+
     Position::init();
+    printf("[ok] Position::init\n");
+
     Bitbases::init();
+    printf("[ok] Bitbases::init\n");
+
     Endgames::init();
+    printf("[ok] Endgames::init\n");
+
     Threads.set(Options["Threads"]);
+    printf("[ok] Threads.set (this spawns a real thread -- watch this one)\n");
+
     Search::clear(); // must happen after threads are up, same order as original
+    printf("[ok] Search::clear\n");
 
     // ---- Feed it a hardcoded "conversation" instead of a keyboard ----
     std::istringstream fakeInput(
@@ -61,12 +81,20 @@ int main(int argc, char** argv)
     );
     std::cin.rdbuf(fakeInput.rdbuf());
 
-    // Blocks until it processes "quit" above. Same function real
-    // Stockfish calls -- just reading from our string instead of a
-    // real keyboard.
-    UCI::loop(0, nullptr);
+    // IMPORTANT FIX: Stockfish's UCI::loop() only reads from cin (our
+    // fake commands above) when argc == 1 -- passing 0 like we did
+    // before silently skips reading cin entirely! We need to pass a
+    // dummy argc=1 with a placeholder argv[0] (program name, unused)
+    // so it takes the "read from cin" branch instead of the "treat
+    // command-line args as a one-shot command" branch.
+    char progName[] = "3ds-fish";
+    char* fakeArgv[] = { progName };
+    printf("[ok] about to enter UCI::loop (this runs the actual search)\n");
+    UCI::loop(1, fakeArgv);
+    printf("[ok] UCI::loop returned\n");
 
     Threads.set(0);
+    printf("[ok] Threads.set(0)\n");
 
     platform_print_ready();
 
