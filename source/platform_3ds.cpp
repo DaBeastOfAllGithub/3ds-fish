@@ -7,6 +7,15 @@
 #include <cstdio>
 #include "platform_3ds.h"
 
+// devkitPro convention: this weak symbol, if defined, overrides the
+// default 32KB main-thread stack size. Stockfish's C++ standard library
+// usage (iostream, strings, maps) needs considerably more headroom than
+// small "hello world" homebrew apps typically do -- this is a common
+// thing to bump when porting heavier C++ code onto the 3DS.
+extern "C" {
+    u32 __stacksize__ = 512 * 1024; // 512KB, up from the ~32KB default
+}
+
 void platform_init()
 {
     gfxInitDefault();
