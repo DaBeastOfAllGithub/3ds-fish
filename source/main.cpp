@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include "platform_3ds.h" // our own wrapper -- not <3ds.h> directly
+#include "board_view.h"   // draws the checkered board on the bottom screen
 
 // Stockfish's own headers -- same ones its real main.cpp includes.
 #include "bitboard.h"
@@ -116,12 +117,15 @@ int main(int argc, char** argv)
     printf("[ok] Threads.set(0)\n");
 
     platform_print_ready();
+    board_view_init();
 
     while (platform_should_continue())
     {
+        board_view_draw();
         platform_present_frame();
     }
 
+    board_view_exit();
     platform_exit();
     return 0;
 }
