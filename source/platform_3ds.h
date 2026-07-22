@@ -13,6 +13,7 @@
 #pragma once
 
 void platform_init();             // turn on screens, set up the console
+void platform_flush_now();        // force whatever's been printf'd so far onto the actual screen right now
 void platform_print_ready();      // print the "press START to exit" prompt
 bool platform_should_continue();  // polls input; false once START is pressed
 void platform_present_frame();    // swap buffers / wait for vblank
