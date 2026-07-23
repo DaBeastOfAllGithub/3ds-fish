@@ -71,11 +71,6 @@ jobs:
           echo "--- Confirming the files actually exist before building ---"
           ls -la romfs/gfx/
 
-          echo "--- FULL contents of 3ds_rules ---"
-          wc -l "$DEVKITARM/3ds_rules"
-          cat "$DEVKITARM/3ds_rules"
-          echo "--- end of 3ds_rules ---"
-
       - name: Build
         run: make
 
