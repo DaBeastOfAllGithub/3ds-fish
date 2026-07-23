@@ -61,7 +61,7 @@ jobs:
           fi
 
           mkdir -p romfs/gfx
-          "$TEX3DS" -i gfx/spritesheet.t3s -H source/spritesheet.h -o romfs/gfx/spritesheet.t3x
+          "$TEX3DS" -i -a gfx/spritesheet.t3s -H source/spritesheet.h -o romfs/gfx/spritesheet.t3x
 
       - name: Build
         run: make
