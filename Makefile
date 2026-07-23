@@ -32,6 +32,13 @@ INCLUDES	:=	include stockfish-src/src stockfish-src/src/syzygy
 # build.yml converts our piece PNGs into .t3x files and places them
 # here before this Makefile ever runs.
 ROMFS		:=	romfs
+# The built-in %.3dsx:%.elf rule (inside 3ds_rules, part of devkitARM
+# itself) already knows to embed this folder -- it just reads whatever
+# is in _3DSXFLAGS. We don't need to rewrite that rule ourselves, just
+# set this one variable. TOPDIR (not CURDIR) is used because this file
+# gets re-parsed from inside the build/ subdirectory partway through
+# the build, and TOPDIR reliably still points at the real project root.
+_3DSXFLAGS	+=	--romfs=$(TOPDIR)/$(ROMFS)
 
 #---------------------------------------------------------------------------------
 # options for code generation -- this is the "which CPU dialect" section,
@@ -103,8 +110,6 @@ else
 DEPENDS	:=	$(OFILES:.o=.d)
 
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
-	@echo "packaging ... (with romfs embedded)"
-	@"$(DEVKITPRO)/tools/bin/3dsxtool" $(OUTPUT).elf $(OUTPUT).3dsx --romfs=$(TOPDIR)/$(ROMFS)
 
 $(OUTPUT).elf	:	$(OFILES)
 
