@@ -60,6 +60,10 @@ jobs:
             exit 1
           fi
 
+          echo "--- Real tex3ds --help output from THIS container ---"
+          "$TEX3DS" --help || true
+          echo "--- end help output ---"
+
           mkdir -p romfs/gfx
           "$TEX3DS" -a -H source/spritesheet.h -o romfs/gfx/spritesheet.t3x \
             gfx/white_king.png gfx/white_queen.png gfx/white_rook.png \
