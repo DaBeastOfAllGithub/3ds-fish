@@ -44,6 +44,27 @@ jobs:
           sed -i 's/clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/::clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/' \
             stockfish-src/src/material.cpp
 
+      - name: Convert piece art to 3DS texture format
+        run: |
+          # tex3ds converts ordinary PNGs into .t3x, the format the 3DS's
+          # GPU actually understands. Same "find the real path, don't
+          # assume it's on PATH" lesson as the arm-none-eabi-g++ issue
+          # earlier -- these devkitPro tools live under $DEVKITPRO/tools.
+          TEX3DS="$DEVKITPRO/tools/bin/tex3ds"
+
+          if [ ! -x "$TEX3DS" ]; then
+            echo "tex3ds not found at $TEX3DS -- listing what IS there:"
+            ls -la "$DEVKITPRO/tools/bin/" || echo "That folder doesn't even exist."
+            exit 1
+          fi
+
+          mkdir -p romfs/gfx
+          for f in gfx/*.png; do
+            name=$(basename "$f" .png)
+            echo "Converting $f -> romfs/gfx/${name}.t3x"
+            "$TEX3DS" -i "$f" -o "romfs/gfx/${name}.t3x"
+          done
+
       - name: Build
         run: make
 
