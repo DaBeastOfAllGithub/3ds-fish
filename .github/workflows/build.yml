@@ -71,8 +71,9 @@ jobs:
           echo "--- Confirming the files actually exist before building ---"
           ls -la romfs/gfx/
 
-          echo "--- How does devkitARM's own build system actually use ROMFS? ---"
-          grep -i -A 5 -B 5 "romfs" "$DEVKITARM/3ds_rules" || echo "(no mention of romfs found in 3ds_rules)"
+          echo "--- FULL contents of 3ds_rules ---"
+          cat "$DEVKITARM/3ds_rules"
+          echo "--- end of 3ds_rules ---"
 
       - name: Build
         run: make
