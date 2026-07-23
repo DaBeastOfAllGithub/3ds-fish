@@ -27,6 +27,11 @@ BUILD		:=	build
 # that step.
 SOURCES		:=	source stockfish-src/src stockfish-src/src/syzygy
 INCLUDES	:=	include stockfish-src/src stockfish-src/src/syzygy
+# ROMFS: a folder whose contents get embedded directly into the .3dsx
+# and are readable at runtime via paths like "romfs:/gfx/whatever.t3x".
+# build.yml converts our piece PNGs into .t3x files and places them
+# here before this Makefile ever runs.
+ROMFS		:=	romfs
 
 #---------------------------------------------------------------------------------
 # options for code generation -- this is the "which CPU dialect" section,
