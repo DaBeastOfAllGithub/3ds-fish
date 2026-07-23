@@ -46,12 +46,13 @@ jobs:
 
       - name: Convert piece art to 3DS texture format
         run: |
-          # tex3ds packs a list of PNGs (described by a .t3s spec file)
-          # into one .t3x spritesheet, plus a generated header with a
-          # named constant for each image's index -- e.g.
-          # spritesheet_white_king_idx. My first attempt tried to hand
-          # tex3ds a raw PNG directly, which it doesn't accept; it
-          # always wants that .t3s list instead.
+          # tex3ds's --help lists an atlas (-a) mode for combining
+          # multiple images into one spritesheet, but this specific
+          # build's actual option parser rejects that flag outright --
+          # a real mismatch between its help text and its behavior.
+          # Simplest reliable path: convert each piece PNG into its own
+          # separate .t3x file, one input at a time, so we never need
+          # atlas mode or the options-file (-i) mechanism at all.
           TEX3DS="$DEVKITPRO/tools/bin/tex3ds"
 
           if [ ! -x "$TEX3DS" ]; then
@@ -60,16 +61,12 @@ jobs:
             exit 1
           fi
 
-          echo "--- Real tex3ds --help output from THIS container ---"
-          "$TEX3DS" --help || true
-          echo "--- end help output ---"
-
           mkdir -p romfs/gfx
-          "$TEX3DS" -a -H source/spritesheet.h -o romfs/gfx/spritesheet.t3x \
-            gfx/white_king.png gfx/white_queen.png gfx/white_rook.png \
-            gfx/white_bishop.png gfx/white_knight.png gfx/white_pawn.png \
-            gfx/black_king.png gfx/black_queen.png gfx/black_rook.png \
-            gfx/black_bishop.png gfx/black_knight.png gfx/black_pawn.png
+          for name in white_king white_queen white_rook white_bishop white_knight white_pawn \
+                      black_king black_queen black_rook black_bishop black_knight black_pawn; do
+            echo "Converting gfx/${name}.png -> romfs/gfx/${name}.t3x"
+            "$TEX3DS" -o "romfs/gfx/${name}.t3x" "gfx/${name}.png"
+          done
 
       - name: Build
         run: make
