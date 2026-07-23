@@ -38,7 +38,14 @@ ROMFS		:=	romfs
 # set this one variable. TOPDIR (not CURDIR) is used because this file
 # gets re-parsed from inside the build/ subdirectory partway through
 # the build, and TOPDIR reliably still points at the real project root.
-_3DSXFLAGS	+=	--romfs=$(TOPDIR)/$(ROMFS)
+#
+# Turns out 3dsxtool also needs an .smdh (app title/author/icon
+# metadata) any time --romfs is used -- it can't embed extras like
+# RomFS without that basic metadata section too. 3ds_rules already has
+# a ready-made rule for building one with sensible defaults; we just
+# need to ask for it via _3DSXDEPS and point _3DSXFLAGS at it.
+_3DSXDEPS	=	$(OUTPUT).smdh
+_3DSXFLAGS	+=	--smdh=$(OUTPUT).smdh --romfs=$(TOPDIR)/$(ROMFS)
 
 #---------------------------------------------------------------------------------
 # options for code generation -- this is the "which CPU dialect" section,
