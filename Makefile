@@ -103,6 +103,8 @@ else
 DEPENDS	:=	$(OFILES:.o=.d)
 
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
+	@echo "packaging ... (with romfs embedded)"
+	@"$(DEVKITPRO)/tools/bin/3dsxtool" $(OUTPUT).elf $(OUTPUT).3dsx --romfs=$(TOPDIR)/$(ROMFS)
 
 $(OUTPUT).elf	:	$(OFILES)
 
