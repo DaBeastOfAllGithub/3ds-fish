@@ -60,4 +60,4 @@ bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves)
     return false;
 }
 
-} // namespace Tablebase
+} // namespace Tablebases
