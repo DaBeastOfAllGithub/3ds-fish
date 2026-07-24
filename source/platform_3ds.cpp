@@ -59,3 +59,19 @@ void platform_exit()
 {
     gfxExit();
 }
+
+bool platform_get_touch_tap(int& x, int& y)
+{
+    // KEY_TOUCH is only set on hidKeysDown() the exact frame contact
+    // begins -- checking it (rather than just "is touched right now")
+    // is what gives us a clean single "tap" event instead of firing
+    // every frame the finger stays down.
+    if (!(hidKeysDown() & KEY_TOUCH))
+        return false;
+
+    touchPosition touch;
+    hidTouchRead(&touch);
+    x = touch.px;
+    y = touch.py;
+    return true;
+}
