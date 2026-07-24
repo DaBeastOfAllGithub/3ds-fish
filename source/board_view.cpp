@@ -1,5 +1,10 @@
 // board_view.cpp
 //
+// [resync checkpoint -- this is the full, current, known-good version
+// as of the RomFS/SMDH debugging session. If your repo has partial
+// edits from an earlier interrupted attempt, replace the whole file
+// with this one rather than trying to merge.]
+//
 // Draws a checkered 8x8 board, then a test row of every piece sprite we
 // have. This isn't real chess position layout yet, it's just "does
 // every texture actually load and draw."
@@ -55,10 +60,19 @@ void board_view_init()
         printf("[board_view] romfsInit ok\n");
 
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
-    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    printf("[board_view] C3D_Init called\n");
+
+    bool c2dOk = C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    printf("[board_view] C2D_Init returned %s\n", c2dOk ? "true" : "FALSE");
+
     C2D_Prepare();
+    printf("[board_view] C2D_Prepare called\n");
 
     bottomTarget = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+    if (!bottomTarget)
+        printf("[board_view] C2D_CreateScreenTarget FAILED (null target!)\n");
+    else
+        printf("[board_view] bottom screen target created ok\n");
 
     for (int i = 0; i < NUM_PIECES; i++)
     {
@@ -73,10 +87,18 @@ void board_view_init()
         }
         pieces[i].image = C2D_SpriteSheetGetImage(pieces[i].sheet, 0);
     }
+    printf("[board_view] init complete, entering draw loop\n");
 }
 
 void board_view_draw()
 {
+    static bool printedOnce = false;
+    if (!printedOnce)
+    {
+        printf("[board_view] first board_view_draw() call happening now\n");
+        printedOnce = true;
+    }
+
     // Classic green/cream chess-board colors.
     const u32 lightSquare = C2D_Color32(0xEE, 0xEE, 0xD2, 0xFF);
     const u32 darkSquare  = C2D_Color32(0x76, 0x96, 0x56, 0xFF);
@@ -130,3 +152,4 @@ void board_view_exit()
     C3D_Fini();
     romfsExit();
 }
+
