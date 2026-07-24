@@ -136,7 +136,13 @@ void board_view_draw()
         float x = static_cast<float>(BOARD_X + col * SQUARE_SIZE);
         float y = static_cast<float>(BOARD_Y + row * SQUARE_SIZE);
 
-        C2D_DrawImageAt(pieces[i].image, x, y, 0.5f);
+        // Our piece textures are 64x64 pixels, but each board square is
+        // only SQUARE_SIZE (30) pixels -- without an explicit scale,
+        // C2D_DrawImageAt draws at the texture's native size, which is
+        // why pieces were overlapping neighboring squares. Scale down
+        // to fit.
+        float scale = static_cast<float>(SQUARE_SIZE) / 64.0f;
+        C2D_DrawImageAt(pieces[i].image, x, y, 0.5f, nullptr, scale, scale);
     }
 
     C3D_FrameEnd(0);
@@ -152,4 +158,3 @@ void board_view_exit()
     C3D_Fini();
     romfsExit();
 }
-
