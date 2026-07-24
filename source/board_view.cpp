@@ -72,6 +72,11 @@ static int board[8][8] = {
     { WR, WN, WB, WQ, WK, WB, WN, WR },
 };
 
+// -1 means "nothing selected". Set by board_view_handle_tap, read by
+// board_view_draw to render the highlight.
+static int selectedRow = -1;
+static int selectedCol = -1;
+
 void board_view_init()
 {
     // Mount the embedded RomFS so "romfs:/..." paths work. If this
@@ -146,6 +151,15 @@ void board_view_draw()
         }
     }
 
+    // Highlight the selected square, if any, before drawing pieces on top.
+    if (selectedRow != -1)
+    {
+        const u32 highlight = C2D_Color32(0xFF, 0xFF, 0x40, 0xA0); // semi-transparent yellow
+        float x = static_cast<float>(BOARD_X + selectedCol * SQUARE_SIZE);
+        float y = static_cast<float>(BOARD_Y + selectedRow * SQUARE_SIZE);
+        C2D_DrawRectSolid(x, y, 0.25f, SQUARE_SIZE, SQUARE_SIZE, highlight);
+    }
+
     // Draw each piece at its actual square, per the board[][] state above.
     for (int row = 0; row < 8; row++)
     {
@@ -169,6 +183,56 @@ void board_view_draw()
     }
 
     C3D_FrameEnd(0);
+}
+
+// Converts a screen tap into a board square, then either selects a
+// piece (first tap) or moves the currently-selected piece there
+// (second tap). No legality checking yet -- any square is a "legal"
+// destination for now, purely to test that touch input and board
+// updates work correctly before adding real chess rules.
+void board_view_handle_tap(int screenX, int screenY)
+{
+    // Outside the board entirely -- treat as "cancel selection."
+    if (screenX < BOARD_X || screenX >= BOARD_X + BOARD_PIXELS ||
+        screenY < BOARD_Y || screenY >= BOARD_Y + BOARD_PIXELS)
+    {
+        selectedRow = -1;
+        selectedCol = -1;
+        return;
+    }
+
+    int col = (screenX - BOARD_X) / SQUARE_SIZE;
+    int row = (screenY - BOARD_Y) / SQUARE_SIZE;
+
+    if (selectedRow == -1)
+    {
+        // Nothing selected yet -- only select if this square has a piece.
+        if (board[row][col] != EMPTY)
+        {
+            selectedRow = row;
+            selectedCol = col;
+        }
+    }
+    else
+    {
+        if (row == selectedRow && col == selectedCol)
+        {
+            // Tapped the same square again -- deselect instead of "moving in place."
+            selectedRow = -1;
+            selectedCol = -1;
+        }
+        else
+        {
+            // Move the selected piece to the tapped square (overwrites
+            // whatever was there, including capturing -- fine for now,
+            // legality/capture rules come once this base is confirmed
+            // working).
+            board[row][col] = board[selectedRow][selectedCol];
+            board[selectedRow][selectedCol] = EMPTY;
+            selectedRow = -1;
+            selectedCol = -1;
+        }
+    }
 }
 
 void board_view_exit()
