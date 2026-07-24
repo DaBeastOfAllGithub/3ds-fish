@@ -122,7 +122,6 @@ int main(int argc, char** argv)
     while (platform_should_continue())
     {
         board_view_draw();
-        platform_present_frame();
     }
 
     board_view_exit();
