@@ -5,9 +5,8 @@
 // edits from an earlier interrupted attempt, replace the whole file
 // with this one rather than trying to merge.]
 //
-// Draws a checkered 8x8 board, then a test row of every piece sprite we
-// have. This isn't real chess position layout yet, it's just "does
-// every texture actually load and draw."
+// Draws a checkered 8x8 board with all pieces in the real chess
+// starting position.
 #include <3ds.h>
 #include <citro2d.h>
 #include <cstdio>
@@ -47,6 +46,31 @@ static PieceTexture pieces[] = {
     { "black_pawn"   },
 };
 static constexpr int NUM_PIECES = sizeof(pieces) / sizeof(pieces[0]);
+
+// Named indices into `pieces` above, so the board layout below reads
+// clearly instead of being a grid of bare numbers.
+enum PieceId
+{
+    WK = 0, WQ, WR, WB, WN, WP,
+    BK, BQ, BR, BB, BN, BP,
+    EMPTY = -1
+};
+
+// board[row][col]: row 0 = top of screen (black's back rank), row 7 =
+// bottom (white's back rank) -- standard "white at the bottom" chess
+// board orientation. This is a plain mutable array on purpose: once we
+// add touch input and move-making, updating a piece's square is just
+// writing a new value here.
+static int board[8][8] = {
+    { BR, BN, BB, BQ, BK, BB, BN, BR },
+    { BP, BP, BP, BP, BP, BP, BP, BP },
+    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
+    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
+    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
+    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
+    { WP, WP, WP, WP, WP, WP, WP, WP },
+    { WR, WN, WB, WQ, WK, WB, WN, WR },
+};
 
 void board_view_init()
 {
@@ -122,27 +146,26 @@ void board_view_draw()
         }
     }
 
-    // Test row: draw every loaded piece across the top two ranks (6 per
-    // row, since we have 12 total), just to confirm each texture
-    // actually shows up. Not a real position yet.
-    for (int i = 0; i < NUM_PIECES; i++)
+    // Draw each piece at its actual square, per the board[][] state above.
+    for (int row = 0; row < 8; row++)
     {
-        if (!pieces[i].sheet)
-            continue; // skip any that failed to load, rather than crash
+        for (int col = 0; col < 8; col++)
+        {
+            int pieceId = board[row][col];
+            if (pieceId == EMPTY)
+                continue;
+            if (!pieces[pieceId].sheet)
+                continue; // skip any that failed to load, rather than crash
 
-        int col = i % 6;
-        int row = (i < 6) ? 0 : 1;
+            float x = static_cast<float>(BOARD_X + col * SQUARE_SIZE);
+            float y = static_cast<float>(BOARD_Y + row * SQUARE_SIZE);
 
-        float x = static_cast<float>(BOARD_X + col * SQUARE_SIZE);
-        float y = static_cast<float>(BOARD_Y + row * SQUARE_SIZE);
-
-        // Our piece textures are 64x64 pixels, but each board square is
-        // only SQUARE_SIZE (30) pixels -- without an explicit scale,
-        // C2D_DrawImageAt draws at the texture's native size, which is
-        // why pieces were overlapping neighboring squares. Scale down
-        // to fit.
-        float scale = static_cast<float>(SQUARE_SIZE) / 64.0f;
-        C2D_DrawImageAt(pieces[i].image, x, y, 0.5f, nullptr, scale, scale);
+            // Our piece textures are 64x64 pixels, but each board square
+            // is only SQUARE_SIZE (30) pixels -- without an explicit
+            // scale, C2D_DrawImageAt draws at the texture's native size.
+            float scale = static_cast<float>(SQUARE_SIZE) / 64.0f;
+            C2D_DrawImageAt(pieces[pieceId].image, x, y, 0.5f, nullptr, scale, scale);
+        }
     }
 
     C3D_FrameEnd(0);
