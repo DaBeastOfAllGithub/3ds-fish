@@ -121,6 +121,10 @@ int main(int argc, char** argv)
 
     while (platform_should_continue())
     {
+        int touchX, touchY;
+        if (platform_get_touch_tap(touchX, touchY))
+            board_view_handle_tap(touchX, touchY);
+
         board_view_draw();
     }
 
