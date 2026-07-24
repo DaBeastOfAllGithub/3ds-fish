@@ -18,3 +18,9 @@ void platform_print_ready();      // print the "press START to exit" prompt
 bool platform_should_continue();  // polls input; false once START is pressed
 void platform_present_frame();    // swap buffers / wait for vblank
 void platform_exit();             // clean shutdown
+
+// Returns true only on the exact frame a new touch begins (not every
+// frame while held down), and fills in the touch position in bottom-
+// screen pixel coordinates. Call after platform_should_continue() each
+// frame (that's what actually scans input).
+bool platform_get_touch_tap(int& x, int& y);
