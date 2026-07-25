@@ -44,6 +44,21 @@ jobs:
           sed -i 's/clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/::clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/' \
             stockfish-src/src/material.cpp
 
+          echo "--- How does Stockfish's own 'go' command actually invoke a search? ---"
+          grep -n -A 40 "void go(" stockfish-src/src/uci.cpp
+
+          echo "--- start_thinking signature ---"
+          grep -n -A 6 "start_thinking" stockfish-src/src/thread.h
+
+          echo "--- how does UCI::go wait for / read the result? ---"
+          grep -n -A 6 "wait_for_search_finished\|main()->" stockfish-src/src/uci.cpp
+
+          echo "--- RootMove / RootMoves structure ---"
+          grep -n -A 15 "struct RootMove" stockfish-src/src/search.h
+
+          echo "--- LimitsType structure ---"
+          grep -n -A 25 "struct LimitsType" stockfish-src/src/search.h
+
       - name: Convert piece art to 3DS texture format
         run: |
           # tex3ds's --help lists an atlas (-a) mode for combining
