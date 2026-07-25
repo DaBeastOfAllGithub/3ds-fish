@@ -17,6 +17,7 @@
 #include "uci.h"
 #include "endgame.h"
 #include "movegen.h"
+#include "misc.h"
 #include "syzygy/tbprobe.h"
 
 namespace PSQT {
@@ -24,7 +25,7 @@ namespace PSQT {
 }
 
 static Position pos;
-static std::unique_ptr<std::deque<StateInfo>> states;
+static StateListPtr states;
 
 static const char* START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -67,6 +68,14 @@ void game_state_init()
     // conversation history, we copied this from its real source once
     // already for the original headless build.
     UCI::init(Options);
+
+    // Cap memory/thread usage hard -- the 3DS has nowhere near a
+    // desktop's RAM or core count. Same caps the original headless
+    // build set via UCI text commands; setting them directly here now
+    // that we're not going through the UCI text layer for this.
+    Options["Hash"] = std::string("1");
+    Options["Threads"] = std::string("1");
+
     PSQT::init();
     Bitboards::init();
     Position::init();
@@ -75,7 +84,7 @@ void game_state_init()
     Threads.set(static_cast<size_t>(Options["Threads"]));
     Search::clear();
 
-    states = std::unique_ptr<std::deque<StateInfo>>(new std::deque<StateInfo>(1));
+    states = StateListPtr(new std::deque<StateInfo>(1));
     pos.set(START_FEN, false, &states->back(), Threads.main());
 }
 
@@ -127,4 +136,28 @@ bool game_state_try_move(int fromRow, int fromCol, int toRow, int toCol)
         }
     }
     return false;
+}
+
+bool game_state_engine_move()
+{
+    // Same call Stockfish's own "go depth N" UCI command makes
+    // internally (uci.cpp's go() function) -- just triggered directly
+    // instead of through the UCI text layer.
+    Search::LimitsType limits;
+    limits.startTime = now(); // "As early as possible!" -- same comment as the real code
+    limits.depth = 8;         // kept shallow for now, given 3DS hardware -- easy to raise later
+
+    Threads.start_thinking(pos, states, limits, false);
+    Threads.main()->wait_for_search_finished();
+
+    if (Threads.main()->rootMoves.empty())
+        return false; // no legal moves -- checkmate or stalemate
+
+    Move best = Threads.main()->rootMoves[0].pv[0];
+    if (best == MOVE_NONE)
+        return false;
+
+    states->emplace_back();
+    pos.do_move(best, states->back());
+    return true;
 }
