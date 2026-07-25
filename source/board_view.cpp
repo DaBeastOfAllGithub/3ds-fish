@@ -236,10 +236,18 @@ void board_view_handle_tap(int screenX, int screenY)
             bool moved = game_state_try_move(selectedRow, selectedCol, row, col);
             selectedRow = -1;
             selectedCol = -1;
-            // If the move wasn't legal, we've simply deselected -- the
-            // display board will refresh unchanged next frame since
-            // game_state's real position didn't change either.
-            (void)moved;
+
+            if (moved)
+            {
+                // Let Stockfish reply immediately. This blocks the whole
+                // app (screen won't redraw) until the search finishes --
+                // acceptable for now at this shallow a depth, but worth
+                // revisiting later with something non-blocking.
+                printf("[board_view] engine thinking...\n");
+                bool engineMoved = game_state_engine_move();
+                if (!engineMoved)
+                    printf("[board_view] engine has no legal move (game over?)\n");
+            }
         }
     }
 }
