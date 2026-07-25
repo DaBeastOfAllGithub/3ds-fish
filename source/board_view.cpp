@@ -11,6 +11,8 @@
 #include <citro2d.h>
 #include <cstdio>
 #include "board_view.h"
+#include "game_state.h"
+#include "piece_ids.h"
 
 // The 3DS bottom screen is 320x240. Giving each square 30x30 pixels
 // makes a 240x240 board, leaving an even margin on both sides.
@@ -47,38 +49,29 @@ static PieceTexture pieces[] = {
 };
 static constexpr int NUM_PIECES = sizeof(pieces) / sizeof(pieces[0]);
 
-// Named indices into `pieces` above, so the board layout below reads
-// clearly instead of being a grid of bare numbers.
-enum PieceId
-{
-    WK = 0, WQ, WR, WB, WN, WP,
-    BK, BQ, BR, BB, BN, BP,
-    EMPTY = -1
-};
+// Named indices into `pieces` above (WK, WQ, ... EMPTY) come from
+// piece_ids.h, shared with game_state.cpp.
 
-// board[row][col]: row 0 = top of screen (black's back rank), row 7 =
-// bottom (white's back rank) -- standard "white at the bottom" chess
-// board orientation. This is a plain mutable array on purpose: once we
-// add touch input and move-making, updating a piece's square is just
-// writing a new value here.
-static int board[8][8] = {
-    { BR, BN, BB, BQ, BK, BB, BN, BR },
-    { BP, BP, BP, BP, BP, BP, BP, BP },
-    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
-    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
-    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
-    { EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY },
-    { WP, WP, WP, WP, WP, WP, WP, WP },
-    { WR, WN, WB, WQ, WK, WB, WN, WR },
-};
+// This is just a DISPLAY cache -- refreshed from game_state_get_board()
+// every frame. The real source of truth is Stockfish's own Position,
+// owned by game_state.cpp.
+static int board[8][8];
 
-// -1 means "nothing selected". Set by board_view_handle_tap, read by
-// board_view_draw to render the highlight.
+// -1 means "nothing selected". Set by board_view_handle_tap.
 static int selectedRow = -1;
 static int selectedCol = -1;
 
+// Which squares the currently-selected piece can legally move to,
+// computed once at selection time. Only meaningful while something is
+// selected.
+static bool legalDest[8][8];
+
 void board_view_init()
 {
+    printf("[board_view] booting Stockfish game state...\n");
+    game_state_init();
+    printf("[board_view] game state ready\n");
+
     // Mount the embedded RomFS so "romfs:/..." paths work. If this
     // fails, every texture load below will fail too, so we print
     // clearly rather than silently drawing nothing.
@@ -128,6 +121,9 @@ void board_view_draw()
         printedOnce = true;
     }
 
+    // Refresh our display cache from the real Stockfish position.
+    game_state_get_board(board);
+
     // Classic green/cream chess-board colors.
     const u32 lightSquare = C2D_Color32(0xEE, 0xEE, 0xD2, 0xFF);
     const u32 darkSquare  = C2D_Color32(0x76, 0x96, 0x56, 0xFF);
@@ -151,13 +147,27 @@ void board_view_draw()
         }
     }
 
-    // Highlight the selected square, if any, before drawing pieces on top.
+    // Highlight the selected square and every legal destination for it.
     if (selectedRow != -1)
     {
-        const u32 highlight = C2D_Color32(0xFF, 0xFF, 0x40, 0xA0); // semi-transparent yellow
-        float x = static_cast<float>(BOARD_X + selectedCol * SQUARE_SIZE);
-        float y = static_cast<float>(BOARD_Y + selectedRow * SQUARE_SIZE);
-        C2D_DrawRectSolid(x, y, 0.25f, SQUARE_SIZE, SQUARE_SIZE, highlight);
+        const u32 selectedColor = C2D_Color32(0xFF, 0xFF, 0x40, 0xA0); // semi-transparent yellow
+        const u32 destColor     = C2D_Color32(0x40, 0xC0, 0xFF, 0x90); // semi-transparent blue
+
+        float sx = static_cast<float>(BOARD_X + selectedCol * SQUARE_SIZE);
+        float sy = static_cast<float>(BOARD_Y + selectedRow * SQUARE_SIZE);
+        C2D_DrawRectSolid(sx, sy, 0.25f, SQUARE_SIZE, SQUARE_SIZE, selectedColor);
+
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 8; c++)
+            {
+                if (!legalDest[r][c])
+                    continue;
+                float dx = static_cast<float>(BOARD_X + c * SQUARE_SIZE);
+                float dy = static_cast<float>(BOARD_Y + r * SQUARE_SIZE);
+                C2D_DrawRectSolid(dx, dy, 0.25f, SQUARE_SIZE, SQUARE_SIZE, destColor);
+            }
+        }
     }
 
     // Draw each piece at its actual square, per the board[][] state above.
@@ -186,10 +196,9 @@ void board_view_draw()
 }
 
 // Converts a screen tap into a board square, then either selects a
-// piece (first tap) or moves the currently-selected piece there
-// (second tap). No legality checking yet -- any square is a "legal"
-// destination for now, purely to test that touch input and board
-// updates work correctly before adding real chess rules.
+// piece and shows its legal destinations (first tap), or attempts to
+// move there (second tap) -- only actually moving if game_state
+// confirms it's legal.
 void board_view_handle_tap(int screenX, int screenY)
 {
     // Outside the board entirely -- treat as "cancel selection."
@@ -211,6 +220,7 @@ void board_view_handle_tap(int screenX, int screenY)
         {
             selectedRow = row;
             selectedCol = col;
+            game_state_get_legal_destinations(row, col, legalDest);
         }
     }
     else
@@ -223,14 +233,13 @@ void board_view_handle_tap(int screenX, int screenY)
         }
         else
         {
-            // Move the selected piece to the tapped square (overwrites
-            // whatever was there, including capturing -- fine for now,
-            // legality/capture rules come once this base is confirmed
-            // working).
-            board[row][col] = board[selectedRow][selectedCol];
-            board[selectedRow][selectedCol] = EMPTY;
+            bool moved = game_state_try_move(selectedRow, selectedCol, row, col);
             selectedRow = -1;
             selectedCol = -1;
+            // If the move wasn't legal, we've simply deselected -- the
+            // display board will refresh unchanged next frame since
+            // game_state's real position didn't change either.
+            (void)moved;
         }
     }
 }
