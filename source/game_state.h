@@ -22,3 +22,9 @@ void game_state_get_legal_destinations(int fromRow, int fromCol, bool dest[8][8]
 // Attempts the move; only succeeds if it's actually legal. Returns
 // true and applies it, or returns false and changes nothing.
 bool game_state_try_move(int fromRow, int fromCol, int toRow, int toCol);
+
+// Runs a real Stockfish search on the current position and plays
+// whatever move it picks. Blocks until the search finishes (a fixed,
+// shallow depth for now, so this shouldn't take too long). Returns
+// false only if there's no legal move at all (checkmate/stalemate).
+bool game_state_engine_move();
