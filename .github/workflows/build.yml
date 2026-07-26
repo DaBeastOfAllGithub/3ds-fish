@@ -44,30 +44,11 @@ jobs:
           sed -i 's/clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/::clamp(npm_w + npm_b, EndgameLimit, MidgameLimit)/' \
             stockfish-src/src/material.cpp
 
-          echo "--- How does Stockfish's own 'go' command actually invoke a search? ---"
-          grep -n -A 40 "void go(" stockfish-src/src/uci.cpp
+          echo "--- How does MainThread::search() actually pick/report the final bestmove? ---"
+          grep -n -B 3 -A 40 "void MainThread::search" stockfish-src/src/search.cpp
 
-          echo "--- start_thinking signature ---"
-          grep -n -A 6 "start_thinking" stockfish-src/src/thread.h
-
-          echo "--- how does UCI::go wait for / read the result? ---"
-          grep -n -A 6 "wait_for_search_finished\|main()->" stockfish-src/src/uci.cpp
-
-          echo "--- RootMove / RootMoves structure ---"
-          grep -n -A 15 "struct RootMove" stockfish-src/src/search.h
-
-          echo "--- LimitsType structure ---"
-          grep -n -A 25 "struct LimitsType" stockfish-src/src/search.h
-
-          echo "--- Option class definition (uci.h) ---"
-          cat stockfish-src/src/uci.h || echo "(uci.h not found at that path)"
-
-          echo "--- Option::operator= and on_hash/on_threads callbacks (ucioption.cpp) ---"
-          grep -n -B 2 -A 15 "Option::operator=" stockfish-src/src/ucioption.cpp || echo "(operator= not found)"
-          grep -n -B 2 -A 8 "on_hash\|on_threads" stockfish-src/src/ucioption.cpp || echo "(on_hash/on_threads not found)"
-
-          echo "--- Where are Hash/Threads options actually declared with defaults? ---"
-          grep -n -i "hash\|threads" stockfish-src/src/ucioption.cpp || echo "(not found)"
+          echo "--- Where does 'bestmove' actually get printed at the very end? ---"
+          grep -n -B 5 -A 10 "sync_cout << \"bestmove" stockfish-src/src/search.cpp
 
       - name: Convert piece art to 3DS texture format
         run: |
