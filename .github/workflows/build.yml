@@ -50,6 +50,9 @@ jobs:
           echo "--- Where does 'bestmove' actually get printed at the very end? ---"
           grep -n -B 5 -A 10 "sync_cout << \"bestmove" stockfish-src/src/search.cpp
 
+          echo "--- Real start_thinking implementation -- does it move/steal our states? ---"
+          grep -n -B 3 -A 25 "void ThreadPool::start_thinking" stockfish-src/src/thread.cpp
+
       - name: Convert piece art to 3DS texture format
         run: |
           # tex3ds's --help lists an atlas (-a) mode for combining
