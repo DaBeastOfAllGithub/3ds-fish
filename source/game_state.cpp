@@ -66,23 +66,25 @@ void game_state_init()
 {
     // Same startup sequence Stockfish's own main.cpp does -- see the
     // conversation history, we copied this from its real source once
-    // already for the original headless build.
+    // already for the original headless build. Order matters a lot
+    // here: setting Options["Threads"] or Options["Hash"] TRIGGERS
+    // real work immediately (on_threads calls Threads.set(), on_hash
+    // calls TT.resize()) -- so those must come AFTER the subsystems
+    // they depend on are ready, not before.
     UCI::init(Options);
-
-    // Cap memory/thread usage hard -- the 3DS has nowhere near a
-    // desktop's RAM or core count. Same caps the original headless
-    // build set via UCI text commands; setting them directly here now
-    // that we're not going through the UCI text layer for this.
-    Options["Hash"] = std::string("1");
-    Options["Threads"] = std::string("1");
 
     PSQT::init();
     Bitboards::init();
     Position::init();
     Bitbases::init();
     Endgames::init();
-    Threads.set(static_cast<size_t>(Options["Threads"]));
+    Threads.set(static_cast<size_t>(Options["Threads"])); // default is already 1, no override needed
     Search::clear();
+
+    // NOW it's safe to cap Hash -- Threads pool already exists, so
+    // TT.resize() (triggered by this assignment) isn't touching
+    // anything that doesn't exist yet.
+    Options["Hash"] = std::string("1");
 
     states = StateListPtr(new std::deque<StateInfo>(1));
     pos.set(START_FEN, false, &states->back(), Threads.main());
