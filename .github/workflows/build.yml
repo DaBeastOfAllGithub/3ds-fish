@@ -59,12 +59,15 @@ jobs:
           echo "--- LimitsType structure ---"
           grep -n -A 25 "struct LimitsType" stockfish-src/src/search.h
 
-          echo "--- Option class definition (ucioption.h) ---"
-          cat stockfish-src/src/ucioption.h
+          echo "--- Option class definition (uci.h) ---"
+          cat stockfish-src/src/uci.h || echo "(uci.h not found at that path)"
 
           echo "--- Option::operator= and on_hash/on_threads callbacks (ucioption.cpp) ---"
-          grep -n -B 2 -A 15 "Option::operator=" stockfish-src/src/ucioption.cpp
-          grep -n -B 2 -A 8 "on_hash\|on_threads" stockfish-src/src/ucioption.cpp
+          grep -n -B 2 -A 15 "Option::operator=" stockfish-src/src/ucioption.cpp || echo "(operator= not found)"
+          grep -n -B 2 -A 8 "on_hash\|on_threads" stockfish-src/src/ucioption.cpp || echo "(on_hash/on_threads not found)"
+
+          echo "--- Where are Hash/Threads options actually declared with defaults? ---"
+          grep -n -i "hash\|threads" stockfish-src/src/ucioption.cpp || echo "(not found)"
 
       - name: Convert piece art to 3DS texture format
         run: |
