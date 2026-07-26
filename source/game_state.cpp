@@ -147,7 +147,7 @@ bool game_state_engine_move()
     // instead of through the UCI text layer.
     Search::LimitsType limits;
     limits.startTime = now(); // "As early as possible!" -- same comment as the real code
-    limits.depth = 8;         // kept shallow for now, given 3DS hardware -- easy to raise later
+    limits.depth = 5;          // temporarily reduced from 8 to test whether the crash scales with search depth
 
     Threads.start_thinking(pos, states, limits, false);
     Threads.main()->wait_for_search_finished();
