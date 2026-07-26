@@ -147,7 +147,7 @@ bool game_state_engine_move()
     // instead of through the UCI text layer.
     Search::LimitsType limits;
     limits.startTime = now(); // "As early as possible!" -- same comment as the real code
-    limits.depth = 5;          // temporarily reduced from 8 to test whether the crash scales with search depth
+    limits.depth = 8;          // real bug was elsewhere (see below) -- restoring depth now that it's fixed
 
     Threads.start_thinking(pos, states, limits, false);
     Threads.main()->wait_for_search_finished();
@@ -159,6 +159,12 @@ bool game_state_engine_move()
     if (best == MOVE_NONE)
         return false;
 
+    // start_thinking() steals our `states` object internally (moves it
+    // into its own storage -- confirmed from Stockfish's real source,
+    // which even comments "states is now empty" right where it happens).
+    // Our copy is null at this point, so we need a fresh one before we
+    // can apply the chosen move to `pos`.
+    states = StateListPtr(new std::deque<StateInfo>(1));
     states->emplace_back();
     pos.do_move(best, states->back());
     return true;
