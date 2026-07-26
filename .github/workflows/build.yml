@@ -59,6 +59,13 @@ jobs:
           echo "--- LimitsType structure ---"
           grep -n -A 25 "struct LimitsType" stockfish-src/src/search.h
 
+          echo "--- Option class definition (ucioption.h) ---"
+          cat stockfish-src/src/ucioption.h
+
+          echo "--- Option::operator= and on_hash/on_threads callbacks (ucioption.cpp) ---"
+          grep -n -B 2 -A 15 "Option::operator=" stockfish-src/src/ucioption.cpp
+          grep -n -B 2 -A 8 "on_hash\|on_threads" stockfish-src/src/ucioption.cpp
+
       - name: Convert piece art to 3DS texture format
         run: |
           # tex3ds's --help lists an atlas (-a) mode for combining
